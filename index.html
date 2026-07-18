@@ -32,6 +32,11 @@
   }
   header.topbar .word{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;}
   header.topbar .sub{font-size:10px;letter-spacing:.14em;color:#BFE0CB;text-transform:uppercase;}
+  .btn-ghost{
+    background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;
+    padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;
+  }
+  .btn-ghost:hover{background:rgba(255,255,255,.1);}
 
   .shell{max-width:640px;margin:0 auto;padding:28px 18px 60px;}
   .center-shell{max-width:380px;margin:0 auto;padding:60px 18px;}
@@ -89,6 +94,7 @@
     <div class="word">VIPTA GLOBAL</div>
     <div class="sub">Package Log</div>
   </div>
+  <button class="btn-ghost" id="btnSignOut" hidden>Sign out</button>
 </header>
 
 <!-- ============ PASSCODE GATE ============ -->
@@ -182,7 +188,7 @@ const storage = firebase.storage();
    ====================================================================== */
 const DEFAULT_PASSCODE = "vipta2026"; // only used the very first time, before anyone sets a real one
 
-document.getElementById('btnGateSubmit').onclick = async () => {
+async function attemptGateSubmit(){
   const entered = document.getElementById('gatePasscode').value.trim();
   const msg = document.getElementById('gateMsg');
   msg.innerHTML = '';
@@ -197,10 +203,26 @@ document.getElementById('btnGateSubmit').onclick = async () => {
     }
     document.getElementById('view-gate').hidden = true;
     document.getElementById('view-tool').hidden = false;
+    document.getElementById('btnSignOut').hidden = false;
     await initShipments();
   }catch(err){
     msg.innerHTML = `<div class="error-msg">${escapeHtml(err.message)}</div>`;
   }
+}
+
+document.getElementById('btnGateSubmit').onclick = attemptGateSubmit;
+document.getElementById('gatePasscode').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') attemptGateSubmit();
+});
+
+document.getElementById('btnSignOut').onclick = async () => {
+  if(unsubscribePackages) unsubscribePackages();
+  await auth.signOut();
+  document.getElementById('gatePasscode').value = '';
+  document.getElementById('gateMsg').innerHTML = '';
+  document.getElementById('btnSignOut').hidden = true;
+  document.getElementById('view-tool').hidden = true;
+  document.getElementById('view-gate').hidden = false;
 };
 
 document.getElementById('btnChangePasscode').onclick = async () => {
