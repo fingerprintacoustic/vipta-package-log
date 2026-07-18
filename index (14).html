@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIPTA Global — Package Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<style>
+  :root{
+    --forest:#073D10; --leaf:#128A2E; --leaf-bright:#2FB23A;
+    --mint:#EAF3EC; --paper:#F8F7F2; --ink:#17231C; --ink-soft:#4C5C52;
+    --line:#D8E2DA; --white:#FFFFFF; --radius:14px;
+    --shadow: 0 1px 2px rgba(7,61,16,.06), 0 8px 24px rgba(7,61,16,.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;line-height:1.5;min-height:100vh;}
+  h1,h2,.display{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  [hidden]{display:none !important;}
+
+  header.topbar{
+    background:var(--forest);color:#fff;padding:14px 20px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  header.topbar .word{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;}
+  header.topbar .sub{font-size:10px;letter-spacing:.14em;color:#BFE0CB;text-transform:uppercase;}
+
+  .shell{max-width:640px;margin:0 auto;padding:28px 18px 60px;}
+  .center-shell{max-width:380px;margin:0 auto;padding:60px 18px;}
+
+  .panel{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);}
+  .panel + .panel{margin-top:16px;}
+  .panel h2{margin:0 0 4px;font-size:18px;}
+  .panel .hint{color:var(--ink-soft);font-size:13px;margin:0 0 16px;}
+
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.05em;}
+  label:first-of-type{margin-top:0;}
+  input,select{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+    font-size:14px;font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);
+  }
+  input:focus{outline:2px solid var(--leaf-bright);outline-offset:1px;}
+
+  .btn-primary{
+    background:var(--leaf);color:#fff;border:none;padding:11px 18px;border-radius:9px;
+    font-weight:600;font-size:14px;margin-top:18px;width:100%;cursor:pointer;
+  }
+  .btn-primary:hover{background:var(--forest);}
+  .btn-secondary{
+    background:var(--mint);color:var(--forest);border:1px solid var(--line);padding:9px 14px;
+    border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
+  }
+  .btn-secondary:hover{background:#DCEBE0;}
+
+  .error-msg{background:#FCEBEA;color:#8A2A22;border:1px solid #F1C6C1;padding:10px 12px;border-radius:8px;font-size:13px;margin-top:12px;}
+  .ok-msg{background:var(--mint);color:var(--forest);border:1px solid #CFE6D6;padding:10px 12px;border-radius:8px;font-size:13px;margin-top:12px;}
+
+  .pkg-row{
+    display:flex;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding:12px 0;
+  }
+  .pkg-row:first-of-type{border-top:none;padding-top:0;}
+  .pkg-thumb{width:52px;height:52px;border-radius:8px;object-fit:cover;flex:none;background:var(--mint);border:1px solid var(--line);}
+  .pkg-info{flex:1;min-width:0;}
+  .pkg-name{font-weight:600;font-size:14px;}
+  .pkg-meta{font-size:12.5px;color:var(--ink-soft);}
+
+  .empty-state{text-align:center;padding:30px 20px;color:var(--ink-soft);font-size:13.5px;}
+
+  .shipment-banner{
+    background:var(--mint);border:1px solid #CFE6D6;border-radius:8px;
+    padding:8px 12px;font-size:13px;font-weight:600;color:var(--forest);margin-bottom:14px;
+  }
+
+  footer.foot{text-align:center;color:var(--ink-soft);font-size:12px;padding:24px 18px 40px;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div>
+    <div class="word">VIPTA GLOBAL</div>
+    <div class="sub">Package Log</div>
+  </div>
+</header>
+
+<!-- ============ PASSCODE GATE ============ -->
+<div id="view-gate" class="center-shell">
+  <div class="panel">
+    <h2>Staff access</h2>
+    <p class="hint">Enter the shared staff passcode to log packages.</p>
+    <label>Passcode</label>
+    <input type="password" id="gatePasscode" autocomplete="off">
+    <button class="btn-primary" id="btnGateSubmit">Continue</button>
+    <div id="gateMsg"></div>
+  </div>
+</div>
+
+<!-- ============ MAIN TOOL ============ -->
+<div id="view-tool" class="shell" hidden>
+  <div class="panel">
+    <div class="shipment-banner" id="shipmentBanner">Loading current shipment…</div>
+    <h2>Log a package</h2>
+    <p class="hint">One entry per package — photo and weight get matched to the customer automatically, no manual sorting after the fact.</p>
+    <label>Customer name</label>
+    <input type="text" id="pkgCustomer" list="customerNames" placeholder="e.g. Tendai Moyo" autocomplete="off">
+    <datalist id="customerNames"></datalist>
+    <label>Order / reference (optional)</label>
+    <input type="text" id="pkgReference" placeholder="e.g. their order number or note">
+    <label>Weight (kg)</label>
+    <input type="number" id="pkgWeight" step="0.1">
+    <label>Photo</label>
+    <input type="file" id="pkgPhoto" accept="image/*" capture="environment">
+    <button class="btn-primary" id="btnLogPackage">Log package</button>
+    <div id="logMsg"></div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <h2 style="margin:0;">Logged packages</h2>
+      <button class="btn-secondary" id="btnExportCsv">Export to Excel</button>
+    </div>
+    <label style="margin-top:12px;">Viewing shipment</label>
+    <select id="shipmentSelect"></select>
+    <div id="pkgList" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Shipments</h2>
+    <p class="hint">Start a new shipment once the current one is complete, so packages don't mix between batches.</p>
+    <label>New shipment name</label>
+    <input type="text" id="newShipmentName" placeholder="e.g. Shipment — 25 July 2026">
+    <button class="btn-secondary" id="btnStartShipment" style="margin-top:10px;">Start new shipment</button>
+    <div id="shipmentMsg"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Settings</h2>
+    <p class="hint">Change the shared staff passcode anytime — no developer needed.</p>
+    <label>New passcode</label>
+    <input type="text" id="newPasscode" autocomplete="off">
+    <button class="btn-secondary" id="btnChangePasscode" style="margin-top:10px;">Update passcode</button>
+    <div id="passcodeMsg"></div>
+  </div>
+</div>
+
+<footer class="foot">VIPTA Global · Package Log (Phase 1)</footer>
+
+<script>
+/* ======================================================================
+   FIREBASE CONFIG — same project as the main VIPTA Global platform,
+   isolated into its own Firestore collection ("packages") and Storage
+   folder ("packages/"), so this stays a clean, separate deliverable.
+   ====================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyD5I96tkpeg0KSOW5vp5kO92eXgGWmUtIY",
+  authDomain: "vipta-global.firebaseapp.com",
+  projectId: "vipta-global",
+  storageBucket: "vipta-global.firebasestorage.app",
+  messagingSenderId: "152988559503",
+  appId: "1:152988559503:web:cebe1778d52172b75ce8fa"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+/* ======================================================================
+   SIMPLE STAFF PASSCODE GATE
+   Not real per-person authentication — a shared passcode for staff,
+   backed by Firebase anonymous sign-in so Firestore/Storage rules can
+   still require request.auth != null. The passcode itself lives in
+   Firestore (not hardcoded here), so staff can change it themselves
+   from the Settings panel — no developer needed to update it.
+   ====================================================================== */
+const DEFAULT_PASSCODE = "vipta2026"; // only used the very first time, before anyone sets a real one
+
+document.getElementById('btnGateSubmit').onclick = async () => {
+  const entered = document.getElementById('gatePasscode').value.trim();
+  const msg = document.getElementById('gateMsg');
+  msg.innerHTML = '';
+  try{
+    await auth.signInAnonymously();
+    const doc = await db.collection('packageLogSettings').doc('passcode').get();
+    const currentPasscode = doc.exists ? doc.data().code : DEFAULT_PASSCODE;
+    if(entered !== currentPasscode){
+      msg.innerHTML = '<div class="error-msg">Incorrect passcode.</div>';
+      await auth.signOut();
+      return;
+    }
+    document.getElementById('view-gate').hidden = true;
+    document.getElementById('view-tool').hidden = false;
+    await initShipments();
+  }catch(err){
+    msg.innerHTML = `<div class="error-msg">${escapeHtml(err.message)}</div>`;
+  }
+};
+
+document.getElementById('btnChangePasscode').onclick = async () => {
+  const newPasscode = document.getElementById('newPasscode').value.trim();
+  const msg = document.getElementById('passcodeMsg');
+  if(!newPasscode){
+    msg.innerHTML = '<div class="error-msg">Enter a new passcode first.</div>';
+    return;
+  }
+  try{
+    await db.collection('packageLogSettings').doc('passcode').set({ code: newPasscode });
+    document.getElementById('newPasscode').value = '';
+    msg.innerHTML = '<div class="ok-msg">Passcode updated — share the new one with staff.</div>';
+  }catch(err){
+    msg.innerHTML = `<div class="error-msg">${escapeHtml(err.message)}</div>`;
+  }
+};
+
+/* ======================================================================
+   SHIPMENTS — every package belongs to a shipment batch, so a new
+   shipment never mixes in with a previous one. "Current shipment" is
+   where new packages get logged; staff can separately browse (or
+   export) any past shipment without affecting what's being logged.
+   ====================================================================== */
+let currentShipmentLabel = null;
+let viewingShipmentLabel = null;
+let unsubscribePackages = null;
+const ALL_SHIPMENTS_VALUE = '__all__';
+
+async function initShipments(){
+  const settingsDoc = await db.collection('packageLogSettings').doc('currentShipment').get();
+  if(settingsDoc.exists && settingsDoc.data().label){
+    currentShipmentLabel = settingsDoc.data().label;
+  } else {
+    currentShipmentLabel = 'Shipment 1';
+    await db.collection('packageLogSettings').doc('currentShipment').set({ label: currentShipmentLabel });
+  }
+  // Make sure the current shipment has a matching entry in the shipments list
+  const existing = await db.collection('shipments').where('label','==',currentShipmentLabel).limit(1).get();
+  if(existing.empty){
+    await db.collection('shipments').add({ label: currentShipmentLabel, startedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  }
+
+  viewingShipmentLabel = currentShipmentLabel;
+  await refreshShipmentDropdown();
+  updateShipmentBanner();
+  switchViewedShipment(currentShipmentLabel);
+  refreshCustomerNameSuggestions();
+}
+
+function updateShipmentBanner(){
+  document.getElementById('shipmentBanner').textContent = `Logging into: ${currentShipmentLabel}`;
+}
+
+async function refreshShipmentDropdown(){
+  const snap = await db.collection('shipments').orderBy('startedAt','desc').get();
+  const select = document.getElementById('shipmentSelect');
+  const options = snap.docs.map(doc => doc.data().label);
+  select.innerHTML =
+    `<option value="${ALL_SHIPMENTS_VALUE}">All shipments (full history)</option>` +
+    options.map(label => `<option value="${escapeHtml(label)}">${escapeHtml(label)}${label===currentShipmentLabel ? ' (current)' : ''}</option>`).join('');
+  select.value = viewingShipmentLabel;
+}
+
+document.getElementById('shipmentSelect').onchange = (e) => {
+  switchViewedShipment(e.target.value);
+};
+
+function switchViewedShipment(label){
+  viewingShipmentLabel = label;
+  if(unsubscribePackages) unsubscribePackages();
+  const list = document.getElementById('pkgList');
+  let query = db.collection('packages').orderBy('loggedAt','desc');
+  if(label !== ALL_SHIPMENTS_VALUE){
+    query = db.collection('packages').where('shipmentLabel','==',label).orderBy('loggedAt','desc');
+  }
+  unsubscribePackages = query.onSnapshot(snap => {
+    if(snap.empty){
+      list.innerHTML = `<div class="empty-state">No packages logged yet${label!==ALL_SHIPMENTS_VALUE ? ' for this shipment' : ''}.</div>`;
+      return;
+    }
+    list.innerHTML = '';
+    snap.forEach(doc => {
+      const p = doc.data();
+      const row = document.createElement('div');
+      row.className = 'pkg-row';
+      row.innerHTML = `
+        <img class="pkg-thumb" src="${p.photoUrl}" alt="">
+        <div class="pkg-info">
+          <div class="pkg-name">${escapeHtml(p.customerName)}</div>
+          <div class="pkg-meta">${p.reference ? escapeHtml(p.reference) + ' · ' : ''}${p.weightKg}kg · ${formatDate(p.loggedAt)}</div>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  }, err => {
+    list.innerHTML = `<div class="error-msg">Couldn't load packages: ${escapeHtml(err.message)}</div>`;
+  });
+}
+
+async function refreshCustomerNameSuggestions(){
+  // Pulled once across all shipments (not just the one being viewed) — a customer
+  // may have shipped before, and staff should still get their name suggested.
+  const snap = await db.collection('packages').get();
+  const names = new Set();
+  snap.forEach(doc => {
+    const name = doc.data().customerName;
+    if(name) names.add(name);
+  });
+  updateCustomerNameSuggestions([...names]);
+}
+
+document.getElementById('btnStartShipment').onclick = async () => {
+  const name = document.getElementById('newShipmentName').value.trim();
+  const msg = document.getElementById('shipmentMsg');
+  if(!name){
+    msg.innerHTML = '<div class="error-msg">Enter a name for the new shipment.</div>';
+    return;
+  }
+  try{
+    await db.collection('shipments').add({ label: name, startedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection('packageLogSettings').doc('currentShipment').set({ label: name });
+    currentShipmentLabel = name;
+    document.getElementById('newShipmentName').value = '';
+    updateShipmentBanner();
+    await refreshShipmentDropdown();
+    document.getElementById('shipmentSelect').value = name;
+    switchViewedShipment(name);
+    msg.innerHTML = '<div class="ok-msg">New shipment started — packages logged from now on go here.</div>';
+  }catch(err){
+    msg.innerHTML = `<div class="error-msg">${escapeHtml(err.message)}</div>`;
+  }
+};
+
+/* ======================================================================
+   LOG A PACKAGE
+   ====================================================================== */
+document.getElementById('btnLogPackage').onclick = async () => {
+  const customerName = document.getElementById('pkgCustomer').value.trim();
+  const reference = document.getElementById('pkgReference').value.trim();
+  const weightKg = Number(document.getElementById('pkgWeight').value);
+  const fileInput = document.getElementById('pkgPhoto');
+  const msg = document.getElementById('logMsg');
+  msg.innerHTML = '';
+
+  if(!customerName || !weightKg || !fileInput.files[0]){
+    msg.innerHTML = '<div class="error-msg">Please add a customer name, weight, and photo.</div>';
+    return;
+  }
+
+  try{
+    const file = fileInput.files[0];
+    const ref = storage.ref().child(`packages/${Date.now()}_${file.name}`);
+    await ref.put(file);
+    const photoUrl = await ref.getDownloadURL();
+
+    await db.collection('packages').add({
+      customerName, reference, weightKg, photoUrl,
+      shipmentLabel: currentShipmentLabel,
+      loggedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    document.getElementById('pkgCustomer').value = '';
+    document.getElementById('pkgReference').value = '';
+    document.getElementById('pkgWeight').value = '';
+    fileInput.value = '';
+    msg.innerHTML = '<div class="ok-msg">Package logged.</div>';
+  }catch(err){
+    msg.innerHTML = `<div class="error-msg">${escapeHtml(err.message)}</div>`;
+  }
+};
+
+function updateCustomerNameSuggestions(names){
+  const datalist = document.getElementById('customerNames');
+  datalist.innerHTML = names.sort().map(n => `<option value="${escapeHtml(n)}">`).join('');
+}
+
+/* ======================================================================
+   EXPORT TO EXCEL (CSV)
+   ====================================================================== */
+document.getElementById('btnExportCsv').onclick = async () => {
+  try{
+    let query = db.collection('packages').orderBy('loggedAt','desc');
+    if(viewingShipmentLabel !== ALL_SHIPMENTS_VALUE){
+      query = db.collection('packages').where('shipmentLabel','==',viewingShipmentLabel).orderBy('loggedAt','desc');
+    }
+    const snap = await query.get();
+    const rows = [['Customer name','Reference','Weight (kg)','Shipment','Photo URL','Logged date']];
+    snap.forEach(doc => {
+      const p = doc.data();
+      rows.push([
+        p.customerName || '',
+        p.reference || '',
+        p.weightKg ?? '',
+        p.shipmentLabel || '',
+        p.photoUrl || '',
+        p.loggedAt && p.loggedAt.toDate ? p.loggedAt.toDate().toLocaleString() : ''
+      ]);
+    });
+    const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const shipmentPart = viewingShipmentLabel === ALL_SHIPMENTS_VALUE ? 'all-shipments' : viewingShipmentLabel.replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    a.download = `vipta-package-log-${shipmentPart}-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }catch(err){
+    alert('Export failed: ' + err.message);
+  }
+};
+
+/* ======================================================================
+   UTILITIES
+   ====================================================================== */
+function escapeHtml(str){
+  if(str == null) return '';
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatDate(ts){
+  if(!ts || !ts.toDate) return 'just now';
+  return ts.toDate().toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+}
+</script>
+</body>
+</html>
